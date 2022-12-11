@@ -109,8 +109,10 @@ mod lines {
         }
     }
 
+    type FromInputSignature<'input, T> = fn(&'input str) -> Result<T, <T as FromInput>::Err>;
+
     pub struct LinesIter<'input, T: FromInput<'input>>(
-        pub Map<Lines<'input>, fn(&'input str) -> Result<T, T::Err>>,
+        pub Map<Lines<'input>, FromInputSignature<'input, T>>,
     );
     impl<'input, T> FromInput<'input> for LinesIter<'input, T>
     where

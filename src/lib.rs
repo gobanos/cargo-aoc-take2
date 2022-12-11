@@ -1,7 +1,7 @@
+use colored::Colorize;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
-use colored::Colorize;
 
 pub mod from_input;
 
@@ -42,13 +42,29 @@ impl Display for RunResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RunResult::GenerationFailed { error } => {
-                write!(f, "{}\n\t- generation error: {error:?}", "GENERATION FAILED".red())
+                write!(
+                    f,
+                    "{}\n\t- generation error: {error:?}",
+                    "GENERATION FAILED".red()
+                )
             }
             RunResult::RunFailed { generation, error } => {
-                write!(f, "{}\n\t- generation: {generation:?}\n\t- execution error: {error:#?}", "EXECUTION FAILED".red())
+                write!(
+                    f,
+                    "{}\n\t- generation: {generation:?}\n\t- execution error: {error:#?}",
+                    "EXECUTION FAILED".red()
+                )
             }
-            RunResult::Success { solution, generation, execution } => {
-                write!(f, "{}\n\t- generation: {generation:?}\n\t- execution: {execution:?}", solution.to_string().green())
+            RunResult::Success {
+                solution,
+                generation,
+                execution,
+            } => {
+                write!(
+                    f,
+                    "{}\n\t- generation: {generation:?}\n\t- execution: {execution:?}",
+                    solution.to_string().green()
+                )
             }
         }
     }

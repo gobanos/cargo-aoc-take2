@@ -1,7 +1,8 @@
 use colored::Colorize;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use std::time::Duration;
+use std::panic::{catch_unwind, UnwindSafe};
+use std::time::{Duration, Instant};
 
 pub mod from_input;
 
@@ -29,12 +30,12 @@ pub enum RunResult {
     },
     RunFailed {
         error: Box<dyn Error>,
-        generation: Duration,
+        generation_duration: Duration,
     },
     Success {
         solution: Box<dyn Display>,
-        generation: Duration,
-        execution: Duration,
+        generation_duration: Duration,
+        execution_duration: Duration,
     },
 }
 
@@ -48,21 +49,24 @@ impl Display for RunResult {
                     "GENERATION FAILED".red()
                 )
             }
-            RunResult::RunFailed { generation, error } => {
+            RunResult::RunFailed {
+                generation_duration,
+                error,
+            } => {
                 write!(
                     f,
-                    "{}\n\t- generation: {generation:?}\n\t- execution error: {error:#?}",
+                    "{}\n\t- generation: {generation_duration:?}\n\t- execution error: {error:?}",
                     "EXECUTION FAILED".red()
                 )
             }
             RunResult::Success {
                 solution,
-                generation,
-                execution,
+                generation_duration,
+                execution_duration,
             } => {
                 write!(
                     f,
-                    "{}\n\t- generation: {generation:?}\n\t- execution: {execution:?}",
+                    "{}\n\t- generation: {generation_duration:?}\n\t- execution: {execution_duration:?}",
                     solution.to_string().green()
                 )
             }
@@ -81,5 +85,79 @@ impl Runner for Never {
 impl Display for Never {
     fn fmt(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
         unimplemented!()
+    }
+}
+
+#[derive(Debug)]
+struct CaughtStringError {
+    error: Box<str>,
+}
+
+impl Display for CaughtStringError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
+impl Error for CaughtStringError {}
+
+#[derive(Debug)]
+struct CaughtUnknownError;
+
+impl Display for CaughtUnknownError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for CaughtUnknownError {}
+
+pub fn catch_unwind_or_downcast_to_error<F: FnOnce() -> R + UnwindSafe, R>(
+    f: F,
+) -> Result<(R, Duration), Box<dyn Error>> {
+    let _ = std::io::stderr().lock();
+    let start = Instant::now();
+    match catch_unwind(f) {
+        Ok(result) => Ok((result, start.elapsed())),
+        Err(caught_panic) => match caught_panic.downcast::<String>() {
+            Ok(error) => Err(Box::new(CaughtStringError {
+                error: error.into_boxed_str(),
+            })
+            .into()),
+            Err(caught_panic) => match caught_panic.downcast::<&str>() {
+                Ok(error) => Err(Box::new(CaughtStringError {
+                    error: error.to_string().into_boxed_str(),
+                })
+                .into()),
+                Err(_) => Err(Box::new(CaughtUnknownError).into()),
+            },
+        },
+    }
+}
+pub fn try_catch_unwind_or_downcast_to_error<
+    F: FnOnce() -> Result<R, E> + UnwindSafe,
+    R,
+    E: Error + 'static,
+>(
+    f: F,
+) -> Result<(R, Duration), Box<dyn Error>> {
+    let _ = std::io::stderr().lock();
+    let start = Instant::now();
+    match catch_unwind(f) {
+        Ok(Ok(result)) => Ok((result, start.elapsed())),
+        Ok(Err(error)) => Err(error.into()),
+        Err(caught_panic) => match caught_panic.downcast::<String>() {
+            Ok(error) => Err(Box::new(CaughtStringError {
+                error: error.into_boxed_str(),
+            })
+            .into()),
+            Err(caught_panic) => match caught_panic.downcast::<&str>() {
+                Ok(error) => Err(Box::new(CaughtStringError {
+                    error: error.to_string().into_boxed_str(),
+                })
+                .into()),
+                Err(_) => Err(Box::new(CaughtUnknownError).into()),
+            },
+        },
     }
 }

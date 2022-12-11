@@ -75,7 +75,9 @@ mod str_ext {
 mod lines {
     use crate::from_input::FromInput;
     use std::convert::Infallible;
+    use std::iter::Map;
     use std::ops::{Deref, DerefMut};
+    use std::str::Lines;
 
     pub struct LinesVec<T>(pub Vec<T>);
     impl<'input, T> FromInput<'input> for LinesVec<T>
@@ -108,7 +110,7 @@ mod lines {
     }
 
     pub struct LinesIter<'input, T: FromInput<'input>>(
-        pub Box<dyn Iterator<Item = Result<T, T::Err>> + 'input>,
+        pub Map<Lines<'input>, fn(&'input str) -> Result<T, T::Err>>,
     );
     impl<'input, T> FromInput<'input> for LinesIter<'input, T>
     where
@@ -117,7 +119,7 @@ mod lines {
         type Err = Infallible;
 
         fn from_input(input: &'input str) -> Result<Self, Self::Err> {
-            Ok(LinesIter(Box::new(input.lines().map(T::from_input))))
+            Ok(LinesIter(input.lines().map(T::from_input)))
         }
     }
 }

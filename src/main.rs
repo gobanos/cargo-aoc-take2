@@ -140,73 +140,49 @@ pub mod __aoc {
 ///  Call each combination of day, part and version (maybe add years too?) with the correct input.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use __aoc::*;
-    use cargo_aoc_take2::{MaybeRunner, RunMetrics, Runner};
+    use cargo_aoc_take2::{MaybeRunner, Runner};
 
     let input = include_str!("../day1.txt");
 
     if let Some(runner) = Aoc::new(Day1, Part1, Base).into_runner() {
-        let RunMetrics {
-            result,
-            generation,
-            execution,
-        } = runner.run(input)?;
+        let result = runner.run(input);
         println!(
-            "[{runner}]: {result}\n\t- generation: {generation:?}\n\t- execution: {execution:?}\n"
+            "[{runner}]: {result}\n"
         );
     }
 
     if let Some(runner) = Aoc::new(Day1, Part1, Alt1::default()).into_runner() {
-        let RunMetrics {
-            result,
-            generation,
-            execution,
-        } = runner.run(input)?;
+        let result = runner.run(input);
         println!(
-            "[{runner}]: {result}\n\t- generation: {generation:?}\n\t- execution: {execution:?}\n"
+            "[{runner}]: {result}\n"
         );
     }
 
     if let Some(runner) = Aoc::new(Day1, Part1, Alt2::default()).into_runner() {
-        let RunMetrics {
-            result,
-            generation,
-            execution,
-        } = runner.run(input)?;
+        let result = runner.run(input);
         println!(
-            "[{runner}]: {result}\n\t- generation: {generation:?}\n\t- execution: {execution:?}\n"
+            "[{runner}]: {result}\n"
         );
     }
 
     if let Some(runner) = Aoc::new(Day1, Part2, Base).into_runner() {
-        let RunMetrics {
-            result,
-            generation,
-            execution,
-        } = runner.run(input)?;
+        let result = runner.run(input);
         println!(
-            "[{runner}]: {result}\n\t- generation: {generation:?}\n\t- execution: {execution:?}\n"
+            "[{runner}]: {result}\n"
         );
     }
 
     if let Some(runner) = Aoc::new(Day1, Part2, Alt1::default()).into_runner() {
-        let RunMetrics {
-            result,
-            generation,
-            execution,
-        } = runner.run(input)?;
+        let result = runner.run(input);
         println!(
-            "[{runner}]: {result}\n\t- generation: {generation:?}\n\t- execution: {execution:?}\n"
+            "[{runner}]: {result}\n"
         );
     }
 
     if let Some(runner) = Aoc::new(Day1, Part2, Alt2::default()).into_runner() {
-        let RunMetrics {
-            result,
-            generation,
-            execution,
-        } = runner.run(input)?;
+        let result = runner.run(input);
         println!(
-            "[{runner}]: {result}\n\t- generation: {generation:?}\n\t- execution: {execution:?}\n"
+            "[{runner}]: {result}\n"
         );
     }
 
@@ -245,27 +221,30 @@ mod day1 {
         fn run(
             &self,
             input: &str,
-        ) -> Result<cargo_aoc_take2::RunMetrics, Box<dyn std::error::Error>> {
+        ) -> cargo_aoc_take2::RunResult {
             use cargo_aoc_take2::from_input::FromInput;
-            use cargo_aoc_take2::RunMetrics;
+            use cargo_aoc_take2::RunResult;
             use std::time::Instant;
 
             let start = Instant::now();
 
             // Based on parameter type `&LinesVec<Parse<i32>>`, we can call `LinesVec::<Parse<i32>>::from_input`.
-            let parsed_input = LinesVec::<Parse<i32>>::from_input(input)?;
+            let parsed_input = match LinesVec::<Parse<i32>>::from_input(input) {
+                Ok(parsed_input) => parsed_input,
+                Err(error) => return RunResult::GenerationFailed { error: error.into() },
+            };
             let generation_completed = Instant::now();
             let generation = generation_completed - start;
 
             // Based on parameter type `&LinesVec<Parse<i32>>`, we know that we can pass a reference to parsed_input
-            // and based on the return type (not a `Result`), we know that we don't need a `?`.
-            let result = part1(&parsed_input);
+            // and based on the return type (not a `Result`), we know that we don't need to match on the result.
+            let solution = part1(&parsed_input);
             let execution = generation_completed.elapsed();
-            Ok(RunMetrics {
-                result: Box::new(result),
+            RunResult::Success {
+                solution: Box::new(solution),
                 generation,
                 execution,
-            })
+            }
         }
     }
 
@@ -296,27 +275,82 @@ mod day1 {
         fn run(
             &self,
             input: &str,
-        ) -> Result<cargo_aoc_take2::RunMetrics, Box<dyn std::error::Error>> {
+        ) -> cargo_aoc_take2::RunResult {
             use cargo_aoc_take2::from_input::FromInput;
-            use cargo_aoc_take2::RunMetrics;
+            use cargo_aoc_take2::RunResult;
             use std::time::Instant;
 
             let start = Instant::now();
 
             // Based on parameter type `LinesIter<Parse<i32>>`, we can call `LinesIter::<Parse<i32>>::from_input`.
-            let parsed_input = LinesIter::<Parse<i32>>::from_input(input)?;
+            let parsed_input = match LinesIter::<Parse<i32>>::from_input(input) {
+                Ok(parsed_input) => parsed_input,
+                Err(error) => return RunResult::GenerationFailed { error: error.into() },
+            };
             let generation_completed = Instant::now();
             let generation = generation_completed - start;
 
             // Based on parameter type `LinesIter<Parse<i32>>`, we know that we can pass parsed_input ownership
-            // and based on the return type (`Result`), we know that we do need a `?`.
-            let result = part1_iter(parsed_input)?;
+            // and based on the return type (`Result`), we know that we do need to match on the result.
+            let solution = match part1_iter(parsed_input) {
+                Ok(solution) => solution,
+                Err(error) => return RunResult::RunFailed { generation, error: error.into() },
+            };
             let execution = generation_completed.elapsed();
-            Ok(RunMetrics {
-                result: Box::new(result),
+            RunResult::Success {
+                solution: Box::new(solution),
                 generation,
                 execution,
-            })
+            }
+        }
+    }
+
+    // #[aoc(day1, part1, alt2="Generation error")]
+    fn part1_generation_error(LinesVec(freqs): &LinesVec<Parse<u32>>) -> u32 {
+        freqs.iter().map(|Parse(n)| n).sum()
+    }
+
+    /// GENERATED BY CARGO-AOC
+    /// Replace the default `Runner` implementation by the custom one, see below
+    impl cargo_aoc_take2::MaybeRunner
+    for crate::__aoc::Aoc<crate::__aoc::Day1, crate::__aoc::Part1, crate::__aoc::Alt2>
+    {
+        type R = Self;
+
+        fn into_runner(mut self) -> Option<Self::R> {
+            // This one sets a custom name for the alternative
+            self.version_mut().set_name("Generation error");
+            Some(self)
+        }
+    }
+
+    /// GENERATED BY CARGO-AOC
+    /// Custom runner implementation
+    impl cargo_aoc_take2::Runner
+    for crate::__aoc::Aoc<crate::__aoc::Day1, crate::__aoc::Part1, crate::__aoc::Alt2>
+    {
+        fn run(
+            &self,
+            input: &str,
+        ) -> cargo_aoc_take2::RunResult {
+            use cargo_aoc_take2::from_input::FromInput;
+            use cargo_aoc_take2::RunResult;
+            use std::time::Instant;
+
+            let start = Instant::now();
+            let parsed_input = match LinesVec::<Parse<u32>>::from_input(input) {
+                Ok(parsed_input) => parsed_input,
+                Err(error) => return RunResult::GenerationFailed { error: error.into() },
+            };
+            let generation_completed = Instant::now();
+            let generation = generation_completed - start;
+            let solution = part1_generation_error(&parsed_input);
+            let execution = generation_completed.elapsed();
+            RunResult::Success {
+                solution: Box::new(solution),
+                generation,
+                execution,
+            }
         }
     }
 
@@ -359,22 +393,25 @@ mod day1 {
         fn run(
             &self,
             input: &str,
-        ) -> Result<cargo_aoc_take2::RunMetrics, Box<dyn std::error::Error>> {
+        ) -> cargo_aoc_take2::RunResult {
             use cargo_aoc_take2::from_input::FromInput;
-            use cargo_aoc_take2::RunMetrics;
+            use cargo_aoc_take2::RunResult;
             use std::time::Instant;
 
             let start = Instant::now();
-            let parsed_input = LinesVec::<Parse<i32>>::from_input(input)?;
+            let parsed_input = match LinesVec::<Parse<i32>>::from_input(input) {
+                Ok(parsed_input) => parsed_input,
+                Err(error) => return RunResult::GenerationFailed { error: error.into() },
+            };
             let generation_completed = Instant::now();
             let generation = generation_completed - start;
-            let result = part2(&parsed_input);
+            let solution = part2(&parsed_input);
             let execution = generation_completed.elapsed();
-            Ok(RunMetrics {
-                result: Box::new(result),
+            RunResult::Success {
+                solution: Box::new(solution),
                 generation,
                 execution,
-            })
+            }
         }
     }
 
@@ -419,22 +456,90 @@ mod day1 {
         fn run(
             &self,
             input: &str,
-        ) -> Result<cargo_aoc_take2::RunMetrics, Box<dyn std::error::Error>> {
+        ) -> cargo_aoc_take2::RunResult {
             use cargo_aoc_take2::from_input::FromInput;
-            use cargo_aoc_take2::RunMetrics;
+            use cargo_aoc_take2::RunResult;
             use std::time::Instant;
 
             let start = Instant::now();
-            let parsed_input = LinesVec::<Parse<i32>>::from_input(input)?;
+            let parsed_input = match LinesVec::<Parse<i32>>::from_input(input) {
+                Ok(parsed_input) => parsed_input,
+                Err(error) => return RunResult::GenerationFailed { error: error.into() },
+            };
             let generation_completed = Instant::now();
             let generation = generation_completed - start;
-            let result = part2_fnv(&parsed_input);
+            let solution = part2_fnv(&parsed_input);
             let execution = generation_completed.elapsed();
-            Ok(RunMetrics {
-                result: Box::new(result),
+            RunResult::Success {
+                solution: Box::new(solution),
                 generation,
                 execution,
-            })
+            }
+        }
+    }
+
+    // #[aoc(day1, part2, alt2="Execution error")]
+    fn part2_execution_error(LinesIter(iter): LinesIter<Parse<u32>>) -> Result<u32, ParseIntError> {
+        let mut reached = FnvHashSet::default();
+        let mut sum = 0;
+
+        reached.insert(sum);
+
+        for f in iter.cycle() {
+            let Parse(f) = f?;
+            sum += f;
+            if !reached.insert(sum) {
+                break;
+            }
+        }
+
+        Ok(sum)
+    }
+
+    /// GENERATED BY CARGO-AOC
+    /// Replace the default `Runner` implementation by the custom one, see below
+    impl cargo_aoc_take2::MaybeRunner
+    for crate::__aoc::Aoc<crate::__aoc::Day1, crate::__aoc::Part2, crate::__aoc::Alt2>
+    {
+        type R = Self;
+
+        fn into_runner(mut self) -> Option<Self::R> {
+            // This one sets a custom name for the alternative
+            self.version_mut().set_name("Execution error");
+            Some(self)
+        }
+    }
+
+    /// GENERATED BY CARGO-AOC
+    /// Custom runner implementation
+    impl cargo_aoc_take2::Runner
+    for crate::__aoc::Aoc<crate::__aoc::Day1, crate::__aoc::Part2, crate::__aoc::Alt2>
+    {
+        fn run(
+            &self,
+            input: &str,
+        ) -> cargo_aoc_take2::RunResult {
+            use cargo_aoc_take2::from_input::FromInput;
+            use cargo_aoc_take2::RunResult;
+            use std::time::Instant;
+
+            let start = Instant::now();
+            let parsed_input = match LinesIter::<Parse<u32>>::from_input(input) {
+                Ok(parsed_input) => parsed_input,
+                Err(error) => return RunResult::GenerationFailed { error: error.into() },
+            };
+            let generation_completed = Instant::now();
+            let generation = generation_completed - start;
+            let solution = match part2_execution_error(parsed_input) {
+                Ok(solution) => solution,
+                Err(error) => return RunResult::RunFailed { generation, error: error.into() },
+            };
+            let execution = generation_completed.elapsed();
+            RunResult::Success {
+                solution: Box::new(solution),
+                generation,
+                execution,
+            }
         }
     }
 }
